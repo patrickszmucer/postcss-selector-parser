@@ -801,7 +801,7 @@ export default class Parser {
 
     splitWord (namespace, firstCallback) {
         // Collect all the relevant tokens together
-        const wordTokens = [this.currToken];
+        const tokensList = [this.currToken];
         let nextToken = this.nextToken;
         while (
             nextToken &&
@@ -809,11 +809,11 @@ export default class Parser {
         ) {
             this.position ++;
             const token = this.currToken;
-            wordTokens.push(token);
+            tokensList.push(token);
             if (this.content(token).endsWith('\\')) {
                 let next = this.nextToken;
                 if (next && next[TOKEN.TYPE] === tokens.space) {
-                    wordTokens.push(next);
+                    tokensList.push(next);
                     this.position ++;
                 }
             }
@@ -821,48 +821,22 @@ export default class Parser {
         }
 
         // Get the content of each token
-        const wordTokensContent = wordTokens.map(token => {
+        const tokensContent = tokensList.map(token => {
             if (token[TOKEN.TYPE] === tokens.space) {
                 return this.requiredSpace(token);
             }
             return this.content(token);
         });
 
-        function createNode ({NodeConstructor, value, startToken, endToken, startIndex, endIndex}) {
-            const sourceIndex = startToken[TOKEN.START_POS] + startIndex;
-            const source = getSource(
-                startToken[TOKEN.START_LINE],
-                startToken[TOKEN.START_COL] + startIndex,
-                endToken[TOKEN.END_LINE],
-                endToken[TOKEN.START_COL] + endIndex
-            );
-            const opts = unescapeProp({value, source, sourceIndex}, "value");
-            return new NodeConstructor(opts);
-        }
-
         // Parse the list of tokens and create a list of new nodes
-        const nodes = [];
+        const nodesToCreate = [];
         let inProgressNode;
-        wordTokens.forEach((token, tokenIndex) => {
-            const content = wordTokensContent[tokenIndex];
+        tokensList.forEach((token, tokenIndex) => {
+            const content = tokensContent[tokenIndex];
             for (let i = 0; i < content.length; i++) {
                 const char = content[i];
-                const prevChar = content[i - 1] || (tokenIndex !== 0 ? wordTokensContent[tokenIndex - 1].slice(-1) : undefined);
-                const nextChar = content[i + 1] || (tokenIndex !== wordTokensContent.length - 1 ? wordTokensContent[tokenIndex + 1][0] : undefined);
-
-                function initNode (NodeConstructor, value = "") {
-                    if (inProgressNode) {
-                        nodes.push(inProgressNode);
-                    }
-                    inProgressNode = {
-                        NodeConstructor,
-                        value,
-                        startToken: token,
-                        endToken: token,
-                        startIndex: i,
-                        endIndex: i,
-                    };
-                }
+                const prevChar = content[i - 1] || (tokenIndex !== 0 ? tokensContent[tokenIndex - 1].slice(-1) : undefined);
+                const nextChar = content[i + 1] || (tokenIndex !== tokensContent.length - 1 ? tokensContent[tokenIndex + 1][0] : undefined);
 
                 if (char === "." && prevChar !== "\\") {
                     initNode(ClassName);
@@ -875,20 +849,43 @@ export default class Parser {
                     inProgressNode.endToken = token;
                     inProgressNode.endIndex = i;
                 }
+
+                function initNode (NodeConstructor, value = "") {
+                    if (inProgressNode) {
+                        nodesToCreate.push(inProgressNode);
+                    }
+                    inProgressNode = {
+                        NodeConstructor,
+                        value,
+                        startToken: token,
+                        endToken: token,
+                        startIndex: i,
+                        endIndex: i,
+                    };
+                }
             }
         });
         if (inProgressNode) {
-            nodes.push(inProgressNode);
+            nodesToCreate.push(inProgressNode);
         }
 
-        nodes.forEach((node, i) => {
+        nodesToCreate.forEach((node, i) => {
             if (i === 0 && firstCallback) {
-                firstCallback.call(this, node.value, nodes.length);
-            } else {
-                this.newNode(createNode(node), namespace);
-                // Ensure that the namespace is used only once
-                namespace = null;
+                firstCallback.call(this, node.value, nodesToCreate.length);
+                return;
             }
+            const {NodeConstructor, value, startToken, endToken, startIndex, endIndex} = node;
+            const sourceIndex = startToken[TOKEN.START_POS] + startIndex;
+            const source = getSource(
+                startToken[TOKEN.START_LINE],
+                startToken[TOKEN.START_COL] + startIndex,
+                endToken[TOKEN.END_LINE],
+                endToken[TOKEN.START_COL] + endIndex
+            );
+            const opts = unescapeProp({value, source, sourceIndex}, "value");
+            this.newNode(new NodeConstructor(opts), namespace);
+            // Ensure that the namespace is used only once
+            namespace = null;
         });
 
         this.position ++;
