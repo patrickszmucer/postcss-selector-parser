@@ -818,6 +818,7 @@ export default class Parser {
     }
 
     splitWord (namespace, firstCallback) {
+        const startToken = this.currToken;
         let nextToken = this.nextToken;
         let word = this.content();
         while (
@@ -852,12 +853,12 @@ export default class Parser {
             }
             let node;
             const current = this.currToken;
-            const sourceIndex = current[TOKEN.START_POS] + indices[i];
+            const sourceIndex = startToken[TOKEN.START_POS] + indices[i];
             const source = getSource(
-                current[1],
-                current[2] + ind,
-                current[3],
-                current[2] + (index - 1)
+                startToken[TOKEN.START_LINE],
+                startToken[TOKEN.START_COL] + ind,
+                current[TOKEN.END_LINE],
+                startToken[TOKEN.START_COL] + (index - 1)
             );
             if (~hasClass.indexOf(ind)) {
                 let classNameOpts = {
