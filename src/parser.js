@@ -6,17 +6,17 @@ import ID from './selectors/id';
 import Tag from './selectors/tag';
 import Str from './selectors/string';
 import Pseudo from './selectors/pseudo';
-import Attribute, {unescapeValue} from './selectors/attribute';
+import Attribute, { unescapeValue } from './selectors/attribute';
 import Universal from './selectors/universal';
 import Combinator from './selectors/combinator';
 import Nesting from './selectors/nesting';
 
 import sortAsc from './sortAscending';
-import tokenize, {FIELDS as TOKEN} from './tokenize';
+import tokenize, { FIELDS as TOKEN } from './tokenize';
 
 import * as tokens from './tokenTypes';
 import * as types from './selectors/types';
-import {unesc, getProp, ensureObject} from './util';
+import { unesc, getProp, ensureObject } from './util';
 
 const WHITESPACE_TOKENS = {
     [tokens.space]: true,
@@ -31,14 +31,14 @@ const WHITESPACE_EQUIV_TOKENS = {
     [tokens.comment]: true,
 };
 
-function tokenStart (token) {
+function tokenStart(token) {
     return {
         line: token[TOKEN.START_LINE],
         column: token[TOKEN.START_COL],
     };
 }
 
-function tokenEnd (token) {
+function tokenEnd(token) {
     return {
         line: token[TOKEN.END_LINE],
         column: token[TOKEN.END_COL],
@@ -46,7 +46,7 @@ function tokenEnd (token) {
 }
 
 
-function getSource (startLine, startColumn, endLine, endColumn) {
+function getSource(startLine, startColumn, endLine, endColumn) {
     return {
         start: {
             line: startLine,
@@ -59,7 +59,7 @@ function getSource (startLine, startColumn, endLine, endColumn) {
     };
 }
 
-function getTokenSource (token) {
+function getTokenSource(token) {
     return getSource(
         token[TOKEN.START_LINE],
         token[TOKEN.START_COL],
@@ -68,7 +68,7 @@ function getTokenSource (token) {
     );
 }
 
-function getTokenSourceSpan (startToken, endToken) {
+function getTokenSourceSpan(startToken, endToken) {
     if (!startToken) {
         return undefined;
     }
@@ -80,7 +80,7 @@ function getTokenSourceSpan (startToken, endToken) {
     );
 }
 
-function unescapeProp (node, prop) {
+function unescapeProp(node, prop) {
     let value = node[prop];
     if (typeof value !== "string") {
         return;
@@ -95,7 +95,7 @@ function unescapeProp (node, prop) {
     return node;
 }
 
-function indexesOf (array, item) {
+function indexesOf(array, item) {
     let i = -1;
     const indexes = [];
 
@@ -106,16 +106,16 @@ function indexesOf (array, item) {
     return indexes;
 }
 
-function uniqs () {
+function uniqs() {
     const list = Array.prototype.concat.apply([], arguments);
 
     return list.filter((item, i) => i === list.indexOf(item));
 }
 
 export default class Parser {
-    constructor (rule, options = {}) {
+    constructor(rule, options = {}) {
         this.rule = rule;
-        this.options = Object.assign({lossy: false, safe: false}, options);
+        this.options = Object.assign({ lossy: false, safe: false }, options);
         this.position = 0;
 
         this.css = typeof this.rule === 'string' ? this.rule : this.rule.selector;
@@ -127,18 +127,18 @@ export default class Parser {
         });
 
         let rootSource = getTokenSourceSpan(this.tokens[0], this.tokens[this.tokens.length - 1]);
-        this.root = new Root({source: rootSource});
+        this.root = new Root({ source: rootSource });
         this.root.errorGenerator = this._errorGenerator();
 
 
-        const selector = new Selector({source: {start: {line: 1, column: 1}}});
+        const selector = new Selector({ source: { start: { line: 1, column: 1 } } });
         this.root.append(selector);
         this.current = selector;
 
         this.loop();
     }
 
-    _errorGenerator () {
+    _errorGenerator() {
         return (message, errorOptions) => {
             if (typeof this.rule === 'string') {
                 return new Error(message);
@@ -147,16 +147,16 @@ export default class Parser {
         };
     }
 
-    attribute () {
+    attribute() {
         const attr = [];
         const startingToken = this.currToken;
-        this.position ++;
+        this.position++;
         while (
             this.position < this.tokens.length &&
             this.currToken[TOKEN.TYPE] !== tokens.closeSquare
         ) {
             attr.push(this.currToken);
-            this.position ++;
+            this.position++;
         }
         if (this.currToken[TOKEN.TYPE] !== tokens.closeSquare) {
             return this.expected('closing square bracket', this.currToken[TOKEN.START_POS]);
@@ -189,215 +189,215 @@ export default class Parser {
             const next = attr[pos + 1];
 
             switch (token[TOKEN.TYPE]) {
-            case tokens.space:
-                // if (
-                //     len === 1 ||
-                //     pos === 0 && this.content(next) === '|'
-                // ) {
-                //     return this.expected('attribute', token[TOKEN.START_POS], content);
-                // }
-                spaceAfterMeaningfulToken = true;
-                if (this.options.lossy) {
-                    break;
-                }
-                if (lastAdded) {
-                    ensureObject(node, 'spaces', lastAdded);
-                    const prevContent = node.spaces[lastAdded].after || '';
-                    node.spaces[lastAdded].after = prevContent + content;
+                case tokens.space:
+                    // if (
+                    //     len === 1 ||
+                    //     pos === 0 && this.content(next) === '|'
+                    // ) {
+                    //     return this.expected('attribute', token[TOKEN.START_POS], content);
+                    // }
+                    spaceAfterMeaningfulToken = true;
+                    if (this.options.lossy) {
+                        break;
+                    }
+                    if (lastAdded) {
+                        ensureObject(node, 'spaces', lastAdded);
+                        const prevContent = node.spaces[lastAdded].after || '';
+                        node.spaces[lastAdded].after = prevContent + content;
 
-                    const existingComment = getProp(node, 'raws', 'spaces', lastAdded, 'after') || null;
+                        const existingComment = getProp(node, 'raws', 'spaces', lastAdded, 'after') || null;
 
-                    if (existingComment) {
-                        node.raws.spaces[lastAdded].after = existingComment + content;
-                    }
-                } else {
-                    spaceBefore = spaceBefore + content;
-                    commentBefore = commentBefore + content;
-                }
-                break;
-            case tokens.asterisk:
-                if (next[TOKEN.TYPE] === tokens.equals) {
-                    node.operator = content;
-                    lastAdded = 'operator';
-                } else if ((!node.namespace || (lastAdded === "namespace" && !spaceAfterMeaningfulToken)) && next) {
-                    if (spaceBefore) {
-                        ensureObject(node, 'spaces', 'attribute');
-                        node.spaces.attribute.before = spaceBefore;
-                        spaceBefore = '';
-                    }
-                    if (commentBefore) {
-                        ensureObject(node, 'raws', 'spaces', 'attribute');
-                        node.raws.spaces.attribute.before = spaceBefore;
-                        commentBefore = '';
-                    }
-                    node.namespace = (node.namespace || "") + content;
-                    const rawValue = getProp(node, 'raws', 'namespace') || null;
-                    if (rawValue) {
-                        node.raws.namespace += content;
-                    }
-                    lastAdded = 'namespace';
-                }
-                spaceAfterMeaningfulToken = false;
-                break;
-            case tokens.dollar:
-                if (lastAdded === "value") {
-                    let oldRawValue = getProp(node, 'raws', 'value');
-                    node.value += "$";
-                    if (oldRawValue) {
-                        node.raws.value = oldRawValue + "$";
+                        if (existingComment) {
+                            node.raws.spaces[lastAdded].after = existingComment + content;
+                        }
+                    } else {
+                        spaceBefore = spaceBefore + content;
+                        commentBefore = commentBefore + content;
                     }
                     break;
-                }
-                // Falls through
-            case tokens.caret:
-                if (next[TOKEN.TYPE] === tokens.equals) {
-                    node.operator = content;
-                    lastAdded = 'operator';
-                }
-                spaceAfterMeaningfulToken = false;
-                break;
-            case tokens.combinator:
-                if (content === '~' && next[TOKEN.TYPE] === tokens.equals) {
-                    node.operator = content;
-                    lastAdded = 'operator';
-                }
-                if (content !== '|') {
+                case tokens.asterisk:
+                    if (next[TOKEN.TYPE] === tokens.equals) {
+                        node.operator = content;
+                        lastAdded = 'operator';
+                    } else if ((!node.namespace || (lastAdded === "namespace" && !spaceAfterMeaningfulToken)) && next) {
+                        if (spaceBefore) {
+                            ensureObject(node, 'spaces', 'attribute');
+                            node.spaces.attribute.before = spaceBefore;
+                            spaceBefore = '';
+                        }
+                        if (commentBefore) {
+                            ensureObject(node, 'raws', 'spaces', 'attribute');
+                            node.raws.spaces.attribute.before = spaceBefore;
+                            commentBefore = '';
+                        }
+                        node.namespace = (node.namespace || "") + content;
+                        const rawValue = getProp(node, 'raws', 'namespace') || null;
+                        if (rawValue) {
+                            node.raws.namespace += content;
+                        }
+                        lastAdded = 'namespace';
+                    }
                     spaceAfterMeaningfulToken = false;
                     break;
-                }
-                if (next[TOKEN.TYPE] === tokens.equals) {
-                    node.operator = content;
-                    lastAdded = 'operator';
-                } else if (!node.namespace && !node.attribute) {
-                    node.namespace = true;
-                }
-                spaceAfterMeaningfulToken = false;
-                break;
-            case tokens.word:
-                if (
-                    next &&
-                    this.content(next) === '|' &&
-                    (attr[pos + 2] && attr[pos + 2][TOKEN.TYPE] !== tokens.equals) && // this look-ahead probably fails with comment nodes involved.
-                    !node.operator &&
-                    !node.namespace
-                ) {
-                    node.namespace = content;
-                    lastAdded = 'namespace';
-                } else if (!node.attribute || (lastAdded === "attribute" && !spaceAfterMeaningfulToken)) {
-                    if (spaceBefore) {
-                        ensureObject(node, 'spaces', 'attribute');
-                        node.spaces.attribute.before = spaceBefore;
-
-                        spaceBefore = '';
-                    }
-                    if (commentBefore) {
-                        ensureObject(node, 'raws', 'spaces', 'attribute');
-                        node.raws.spaces.attribute.before = commentBefore;
-                        commentBefore = '';
-                    }
-                    node.attribute = (node.attribute || "") + content;
-                    const rawValue = getProp(node, 'raws', 'attribute') || null;
-                    if (rawValue) {
-                        node.raws.attribute += content;
-                    }
-                    lastAdded = 'attribute';
-                } else if ((!node.value && node.value !== "") || (lastAdded === "value" && !spaceAfterMeaningfulToken)) {
-                    let unescaped = unesc(content);
-                    let oldRawValue = getProp(node, 'raws', 'value') || '';
-                    let oldValue = node.value || '';
-                    node.value = oldValue + unescaped;
-                    node.quoteMark = null;
-                    if (unescaped !== content || oldRawValue) {
-                        ensureObject(node, 'raws');
-                        node.raws.value = (oldRawValue || oldValue) + content;
-                    }
-                    lastAdded = 'value';
-                } else {
-                    let insensitive = (content === 'i' || content === "I");
-                    if ((node.value || node.value === '') && (node.quoteMark || spaceAfterMeaningfulToken)) {
-                        node.insensitive = insensitive;
-                        if (!insensitive || content === "I") {
-                            ensureObject(node, 'raws');
-                            node.raws.insensitiveFlag = content;
+                case tokens.dollar:
+                    if (lastAdded === "value") {
+                        let oldRawValue = getProp(node, 'raws', 'value');
+                        node.value += "$";
+                        if (oldRawValue) {
+                            node.raws.value = oldRawValue + "$";
                         }
-                        lastAdded = 'insensitive';
+                        break;
+                    }
+                // Falls through
+                case tokens.caret:
+                    if (next[TOKEN.TYPE] === tokens.equals) {
+                        node.operator = content;
+                        lastAdded = 'operator';
+                    }
+                    spaceAfterMeaningfulToken = false;
+                    break;
+                case tokens.combinator:
+                    if (content === '~' && next[TOKEN.TYPE] === tokens.equals) {
+                        node.operator = content;
+                        lastAdded = 'operator';
+                    }
+                    if (content !== '|') {
+                        spaceAfterMeaningfulToken = false;
+                        break;
+                    }
+                    if (next[TOKEN.TYPE] === tokens.equals) {
+                        node.operator = content;
+                        lastAdded = 'operator';
+                    } else if (!node.namespace && !node.attribute) {
+                        node.namespace = true;
+                    }
+                    spaceAfterMeaningfulToken = false;
+                    break;
+                case tokens.word:
+                    if (
+                        next &&
+                        this.content(next) === '|' &&
+                        (attr[pos + 2] && attr[pos + 2][TOKEN.TYPE] !== tokens.equals) && // this look-ahead probably fails with comment nodes involved.
+                        !node.operator &&
+                        !node.namespace
+                    ) {
+                        node.namespace = content;
+                        lastAdded = 'namespace';
+                    } else if (!node.attribute || (lastAdded === "attribute" && !spaceAfterMeaningfulToken)) {
                         if (spaceBefore) {
-                            ensureObject(node, 'spaces', 'insensitive');
-                            node.spaces.insensitive.before = spaceBefore;
+                            ensureObject(node, 'spaces', 'attribute');
+                            node.spaces.attribute.before = spaceBefore;
 
                             spaceBefore = '';
                         }
                         if (commentBefore) {
-                            ensureObject(node, 'raws', 'spaces', 'insensitive');
-                            node.raws.spaces.insensitive.before = commentBefore;
+                            ensureObject(node, 'raws', 'spaces', 'attribute');
+                            node.raws.spaces.attribute.before = commentBefore;
                             commentBefore = '';
                         }
-                    } else if (node.value || node.value === '') {
+                        node.attribute = (node.attribute || "") + content;
+                        const rawValue = getProp(node, 'raws', 'attribute') || null;
+                        if (rawValue) {
+                            node.raws.attribute += content;
+                        }
+                        lastAdded = 'attribute';
+                    } else if ((!node.value && node.value !== "") || (lastAdded === "value" && !spaceAfterMeaningfulToken)) {
+                        let unescaped = unesc(content);
+                        let oldRawValue = getProp(node, 'raws', 'value') || '';
+                        let oldValue = node.value || '';
+                        node.value = oldValue + unescaped;
+                        node.quoteMark = null;
+                        if (unescaped !== content || oldRawValue) {
+                            ensureObject(node, 'raws');
+                            node.raws.value = (oldRawValue || oldValue) + content;
+                        }
                         lastAdded = 'value';
-                        node.value += content;
-                        if (node.raws.value) {
-                            node.raws.value += content;
+                    } else {
+                        let insensitive = (content === 'i' || content === "I");
+                        if ((node.value || node.value === '') && (node.quoteMark || spaceAfterMeaningfulToken)) {
+                            node.insensitive = insensitive;
+                            if (!insensitive || content === "I") {
+                                ensureObject(node, 'raws');
+                                node.raws.insensitiveFlag = content;
+                            }
+                            lastAdded = 'insensitive';
+                            if (spaceBefore) {
+                                ensureObject(node, 'spaces', 'insensitive');
+                                node.spaces.insensitive.before = spaceBefore;
+
+                                spaceBefore = '';
+                            }
+                            if (commentBefore) {
+                                ensureObject(node, 'raws', 'spaces', 'insensitive');
+                                node.raws.spaces.insensitive.before = commentBefore;
+                                commentBefore = '';
+                            }
+                        } else if (node.value || node.value === '') {
+                            lastAdded = 'value';
+                            node.value += content;
+                            if (node.raws.value) {
+                                node.raws.value += content;
+                            }
                         }
                     }
-                }
-                spaceAfterMeaningfulToken = false;
-                break;
-            case tokens.str:
-                if (!node.attribute || !node.operator) {
-                    return this.error(`Expected an attribute followed by an operator preceding the string.`, {
-                        index: token[TOKEN.START_POS],
-                    });
-                }
-                let {unescaped, quoteMark} = unescapeValue(content);
-                node.value = unescaped;
-                node.quoteMark = quoteMark;
-                lastAdded = 'value';
-
-                ensureObject(node, 'raws');
-                node.raws.value = content;
-
-                spaceAfterMeaningfulToken = false;
-                break;
-            case tokens.equals:
-                if (!node.attribute) {
-                    return this.expected('attribute', token[TOKEN.START_POS], content);
-                }
-                if (node.value) {
-                    return this.error('Unexpected "=" found; an operator was already defined.', {index: token[TOKEN.START_POS]});
-                }
-                node.operator = node.operator ? node.operator + content : content;
-                lastAdded = 'operator';
-                spaceAfterMeaningfulToken = false;
-                break;
-            case tokens.comment:
-                if (lastAdded) {
-                    if (spaceAfterMeaningfulToken || (next && next[TOKEN.TYPE] === tokens.space) ||
-                        lastAdded === 'insensitive'
-                    ) {
-                        const lastComment = getProp(node, 'spaces', lastAdded, 'after') || '';
-                        const rawLastComment = getProp(node, 'raws', 'spaces', lastAdded, 'after') || lastComment;
-
-                        ensureObject(node, 'raws', 'spaces', lastAdded);
-                        node.raws.spaces[lastAdded].after = rawLastComment + content;
-                    } else {
-                        const lastValue = node[lastAdded] || '';
-                        const rawLastValue = getProp(node, 'raws', lastAdded) || lastValue;
-                        ensureObject(node, 'raws');
-                        node.raws[lastAdded] = rawLastValue + content;
+                    spaceAfterMeaningfulToken = false;
+                    break;
+                case tokens.str:
+                    if (!node.attribute || !node.operator) {
+                        return this.error(`Expected an attribute followed by an operator preceding the string.`, {
+                            index: token[TOKEN.START_POS],
+                        });
                     }
-                } else {
-                    commentBefore = commentBefore + content;
-                }
-                break;
-            default:
-                return this.error(`Unexpected "${content}" found.`, {index: token[TOKEN.START_POS]});
+                    let { unescaped, quoteMark } = unescapeValue(content);
+                    node.value = unescaped;
+                    node.quoteMark = quoteMark;
+                    lastAdded = 'value';
+
+                    ensureObject(node, 'raws');
+                    node.raws.value = content;
+
+                    spaceAfterMeaningfulToken = false;
+                    break;
+                case tokens.equals:
+                    if (!node.attribute) {
+                        return this.expected('attribute', token[TOKEN.START_POS], content);
+                    }
+                    if (node.value) {
+                        return this.error('Unexpected "=" found; an operator was already defined.', { index: token[TOKEN.START_POS] });
+                    }
+                    node.operator = node.operator ? node.operator + content : content;
+                    lastAdded = 'operator';
+                    spaceAfterMeaningfulToken = false;
+                    break;
+                case tokens.comment:
+                    if (lastAdded) {
+                        if (spaceAfterMeaningfulToken || (next && next[TOKEN.TYPE] === tokens.space) ||
+                            lastAdded === 'insensitive'
+                        ) {
+                            const lastComment = getProp(node, 'spaces', lastAdded, 'after') || '';
+                            const rawLastComment = getProp(node, 'raws', 'spaces', lastAdded, 'after') || lastComment;
+
+                            ensureObject(node, 'raws', 'spaces', lastAdded);
+                            node.raws.spaces[lastAdded].after = rawLastComment + content;
+                        } else {
+                            const lastValue = node[lastAdded] || '';
+                            const rawLastValue = getProp(node, 'raws', lastAdded) || lastValue;
+                            ensureObject(node, 'raws');
+                            node.raws[lastAdded] = rawLastValue + content;
+                        }
+                    } else {
+                        commentBefore = commentBefore + content;
+                    }
+                    break;
+                default:
+                    return this.error(`Unexpected "${content}" found.`, { index: token[TOKEN.START_POS] });
             }
-            pos ++;
+            pos++;
         }
         unescapeProp(node, "attribute");
         unescapeProp(node, "namespace");
         this.newNode(new Attribute(node));
-        this.position ++;
+        this.position++;
     }
 
     /**
@@ -412,7 +412,7 @@ export default class Parser {
      *
      * In lossy mode, this returns only comments.
      */
-    parseWhitespaceEquivalentTokens (stopPosition) {
+    parseWhitespaceEquivalentTokens(stopPosition) {
         if (stopPosition < 0) {
             stopPosition = this.tokens.length;
         }
@@ -456,7 +456,7 @@ export default class Parser {
                         lastToken[TOKEN.END_COL],
                     ),
                     sourceIndex: firstToken[TOKEN.START_POS],
-                    spaces: {before: space, after: ''},
+                    spaces: { before: space, after: '' },
                 }));
             }
         }
@@ -467,7 +467,7 @@ export default class Parser {
      * 
      * @param {*} nodes 
      */
-    convertWhitespaceNodesToSpace (nodes, requiredSpace = false) {
+    convertWhitespaceNodesToSpace(nodes, requiredSpace = false) {
         let space = "";
         let rawSpace = "";
         nodes.forEach(n => {
@@ -479,17 +479,17 @@ export default class Parser {
         if (rawSpace === space) {
             rawSpace = undefined;
         }
-        let result = {space, rawSpace};
+        let result = { space, rawSpace };
         return result;
     }
 
-    isNamedCombinator (position = this.position) {
+    isNamedCombinator(position = this.position) {
         return this.tokens[position + 0] && this.tokens[position + 0][TOKEN.TYPE] === tokens.slash &&
-               this.tokens[position + 1] && this.tokens[position + 1][TOKEN.TYPE] === tokens.word &&
-               this.tokens[position + 2] && this.tokens[position + 2][TOKEN.TYPE] === tokens.slash;
+            this.tokens[position + 1] && this.tokens[position + 1][TOKEN.TYPE] === tokens.word &&
+            this.tokens[position + 2] && this.tokens[position + 2][TOKEN.TYPE] === tokens.slash;
 
     }
-    namedCombinator () {
+    namedCombinator() {
         if (this.isNamedCombinator()) {
             let nameRaw = this.content(this.tokens[this.position + 1]);
             let name = unesc(nameRaw).toLowerCase();
@@ -515,7 +515,7 @@ export default class Parser {
         }
     }
 
-    combinator () {
+    combinator() {
         if (this.content() === '|') {
             return this.namespace();
         }
@@ -527,7 +527,7 @@ export default class Parser {
             if (nodes.length > 0) {
                 let last = this.current.last;
                 if (last) {
-                    let {space, rawSpace} = this.convertWhitespaceNodesToSpace(nodes);
+                    let { space, rawSpace } = this.convertWhitespaceNodesToSpace(nodes);
                     if (rawSpace !== undefined) {
                         last.rawSpaceAfter += rawSpace;
                     }
@@ -563,18 +563,18 @@ export default class Parser {
 
         if (node) {
             if (spaceOrDescendantSelectorNodes) {
-                let {space, rawSpace} = this.convertWhitespaceNodesToSpace(spaceOrDescendantSelectorNodes);
+                let { space, rawSpace } = this.convertWhitespaceNodesToSpace(spaceOrDescendantSelectorNodes);
                 node.spaces.before = space;
                 node.rawSpaceBefore = rawSpace;
             }
         } else {
             // descendant combinator
-            let {space, rawSpace} = this.convertWhitespaceNodesToSpace(spaceOrDescendantSelectorNodes, true);
+            let { space, rawSpace } = this.convertWhitespaceNodesToSpace(spaceOrDescendantSelectorNodes, true);
             if (!rawSpace) {
                 rawSpace = space;
             }
             let spaces = {};
-            let raws = {spaces: {}};
+            let raws = { spaces: {} };
             if (space.endsWith(' ') && rawSpace.endsWith(' ')) {
                 spaces.before = space.slice(0, space.length - 1);
                 raws.spaces.before = rawSpace.slice(0, rawSpace.length - 1);
@@ -601,63 +601,63 @@ export default class Parser {
         return this.newNode(node);
     }
 
-    comma () {
+    comma() {
         if (this.position === this.tokens.length - 1) {
             this.root.trailingComma = true;
-            this.position ++;
+            this.position++;
             return;
         }
         this.current._inferEndPosition();
-        const selector = new Selector({source: {start: tokenStart(this.tokens[this.position + 1])}});
+        const selector = new Selector({ source: { start: tokenStart(this.tokens[this.position + 1]) } });
         this.current.parent.append(selector);
         this.current = selector;
-        this.position ++;
+        this.position++;
     }
 
-    comment () {
+    comment() {
         const current = this.currToken;
         this.newNode(new Comment({
             value: this.content(),
             source: getTokenSource(current),
             sourceIndex: current[TOKEN.START_POS],
         }));
-        this.position ++;
+        this.position++;
     }
 
-    error (message, opts) {
+    error(message, opts) {
         throw this.root.error(message, opts);
     }
 
-    missingBackslash () {
+    missingBackslash() {
         return this.error('Expected a backslash preceding the semicolon.', {
             index: this.currToken[TOKEN.START_POS],
         });
     }
 
-    missingParenthesis () {
+    missingParenthesis() {
         return this.expected('opening parenthesis', this.currToken[TOKEN.START_POS]);
     }
 
-    missingSquareBracket () {
+    missingSquareBracket() {
         return this.expected('opening square bracket', this.currToken[TOKEN.START_POS]);
     }
 
-    unexpected () {
+    unexpected() {
         return this.error(`Unexpected '${this.content()}'. Escaping special characters with \\ may help.`, this.currToken[TOKEN.START_POS]);
     }
 
-    namespace () {
+    namespace() {
         const before = this.prevToken && this.content(this.prevToken) || true;
         if (this.nextToken[TOKEN.TYPE] === tokens.word) {
-            this.position ++;
+            this.position++;
             return this.word(before);
         } else if (this.nextToken[TOKEN.TYPE] === tokens.asterisk) {
-            this.position ++;
+            this.position++;
             return this.universal(before);
         }
     }
 
-    nesting () {
+    nesting() {
         if (this.nextToken) {
             let nextContent = this.content(this.nextToken);
             if (nextContent === "|") {
@@ -671,31 +671,31 @@ export default class Parser {
             source: getTokenSource(current),
             sourceIndex: current[TOKEN.START_POS],
         }));
-        this.position ++;
+        this.position++;
     }
 
-    parentheses () {
+    parentheses() {
         let last = this.current.last;
         let unbalanced = 1;
-        this.position ++;
+        this.position++;
         if (last && last.type === types.PSEUDO) {
-            const selector = new Selector({source: {start: tokenStart(this.tokens[this.position - 1])}});
+            const selector = new Selector({ source: { start: tokenStart(this.tokens[this.position - 1]) } });
             const cache = this.current;
             last.append(selector);
             this.current = selector;
             while (this.position < this.tokens.length && unbalanced) {
                 if (this.currToken[TOKEN.TYPE] === tokens.openParenthesis) {
-                    unbalanced ++;
+                    unbalanced++;
                 }
                 if (this.currToken[TOKEN.TYPE] === tokens.closeParenthesis) {
-                    unbalanced --;
+                    unbalanced--;
                 }
                 if (unbalanced) {
                     this.parse();
                 } else {
                     this.current.source.end = tokenEnd(this.currToken);
                     this.current.parent.source.end = tokenEnd(this.currToken);
-                    this.position ++;
+                    this.position++;
                 }
             }
             this.current = cache;
@@ -707,14 +707,14 @@ export default class Parser {
             let parenEnd;
             while (this.position < this.tokens.length && unbalanced) {
                 if (this.currToken[TOKEN.TYPE] === tokens.openParenthesis) {
-                    unbalanced ++;
+                    unbalanced++;
                 }
                 if (this.currToken[TOKEN.TYPE] === tokens.closeParenthesis) {
-                    unbalanced --;
+                    unbalanced--;
                 }
                 parenEnd = this.currToken;
                 parenValue += this.parseParenthesisToken(this.currToken);
-                this.position ++;
+                this.position++;
             }
             if (last) {
                 last.appendToPropertyAndEscape("value", parenValue, parenValue);
@@ -736,12 +736,12 @@ export default class Parser {
         }
     }
 
-    pseudo () {
+    pseudo() {
         let pseudoStr = '';
         let startingToken = this.currToken;
         while (this.currToken && this.currToken[TOKEN.TYPE] === tokens.colon) {
             pseudoStr += this.content();
-            this.position ++;
+            this.position++;
         }
         if (!this.currToken) {
             return this.expected(['pseudo-class', 'pseudo-element'], this.position - 1);
@@ -769,7 +769,7 @@ export default class Parser {
         }
     }
 
-    space () {
+    space() {
         const content = this.content();
         // Handle space before and after the selector
         if (
@@ -779,33 +779,33 @@ export default class Parser {
             (this.current.nodes.every((node) => node.type === 'comment'))
         ) {
             this.spaces = this.optionalSpace(content);
-            this.position ++;
+            this.position++;
         } else if (
             this.position === (this.tokens.length - 1) ||
             this.nextToken[TOKEN.TYPE] === tokens.comma ||
             this.nextToken[TOKEN.TYPE] === tokens.closeParenthesis
         ) {
             this.current.last.spaces.after = this.optionalSpace(content);
-            this.position ++;
+            this.position++;
         } else {
             this.combinator();
         }
     }
 
-    string () {
+    string() {
         const current = this.currToken;
         this.newNode(new Str({
             value: this.content(),
             source: getTokenSource(current),
             sourceIndex: current[TOKEN.START_POS],
         }));
-        this.position ++;
+        this.position++;
     }
 
-    universal (namespace) {
+    universal(namespace) {
         const nextToken = this.nextToken;
         if (nextToken && this.content(nextToken) === '|') {
-            this.position ++;
+            this.position++;
             return this.namespace();
         }
         const current = this.currToken;
@@ -814,92 +814,193 @@ export default class Parser {
             source: getTokenSource(current),
             sourceIndex: current[TOKEN.START_POS],
         }), namespace);
-        this.position ++;
+        this.position++;
     }
 
-    splitWord (namespace, firstCallback) {
-        const startToken = this.currToken;
+    splitWord(namespace, firstCallback) {
+        const wordTokens = [this.currToken];
+
         let nextToken = this.nextToken;
-        let word = this.content();
         while (
             nextToken &&
             ~[tokens.dollar, tokens.caret, tokens.equals, tokens.word].indexOf(nextToken[TOKEN.TYPE])
         ) {
-            this.position ++;
-            let current = this.content();
-            word += current;
-            if (current.lastIndexOf('\\') === current.length - 1) {
+            this.position++;
+            const token = this.currToken;
+            wordTokens.push(token);
+            if (this.content(token).endsWith('\\')) {
                 let next = this.nextToken;
                 if (next && next[TOKEN.TYPE] === tokens.space) {
-                    word += this.requiredSpace(this.content(next));
-                    this.position ++;
+                    wordTokens.push(next);
+                    this.position++;
                 }
             }
             nextToken = this.nextToken;
         }
-        const hasClass = indexesOf(word, '.').filter(i => word[i - 1] !== '\\');
-        let hasId = indexesOf(word, '#').filter(i => word[i - 1] !== '\\');
-        // Eliminate Sass interpolations from the list of id indexes
-        const interpolations = indexesOf(word, '#{');
-        if (interpolations.length) {
-            hasId = hasId.filter(hashIndex => !~interpolations.indexOf(hashIndex));
+
+        const tokenToString = (token) => {
+            return token[TOKEN.TYPE] === tokens.space ? this.requiredSpace(token) : this.content(token);
+        };
+
+        function iterateOverTokens(tkns, cb) {
+            const tokenContents = tkns.map(tokenToString);
+            tkns.forEach((t, tokenIndex) => {
+                const content = tokenContents[tokenIndex];
+                for (let i = 0; i < content.length; i++) {
+                    const previousChar = content[i - 1] || (tokenIndex !== 0 ? tokenContents[tokenIndex - 1].slice(-1) : undefined);
+                    const nextChar = content[i + 1] || (tokenIndex !== tokenContents.length - 1 ? tokenContents[tokenIndex + 1][0] : undefined);
+                    cb({ token: t, char: content[i], i, previousChar, nextChar });
+                }
+            });
         }
-        let indices = sortAsc(uniqs([0, ...hasClass, ...hasId]));
-        indices.forEach((ind, i) => {
-            const index = indices[i + 1] || word.length;
-            const value = word.slice(ind, index);
-            if (i === 0 && firstCallback) {
-                return firstCallback.call(this, value, indices.length);
-            }
-            let node;
-            const current = this.currToken;
-            const sourceIndex = startToken[TOKEN.START_POS] + indices[i];
+
+
+        function toNode({ type, value, startToken, endToken, startIndex, endIndex }) {
+            console.log(wordTokens);
+            const sourceIndex = startToken[TOKEN.START_POS] + startIndex;
             const source = getSource(
                 startToken[TOKEN.START_LINE],
-                startToken[TOKEN.START_COL] + ind,
-                current[TOKEN.END_LINE],
-                startToken[TOKEN.START_COL] + (index - 1)
+                startToken[TOKEN.START_COL] + startIndex,
+                endToken[TOKEN.END_LINE],
+                endToken[TOKEN.START_COL] + endIndex
             );
-            if (~hasClass.indexOf(ind)) {
-                let classNameOpts = {
-                    value: value.slice(1),
-                    source,
-                    sourceIndex,
-                };
-                node = new ClassName(unescapeProp(classNameOpts, "value"));
-            } else if (~hasId.indexOf(ind)) {
-                let idOpts = {
-                    value: value.slice(1),
-                    source,
-                    sourceIndex,
-                };
-                node = new ID(unescapeProp(idOpts, "value"));
-            } else {
-                let tagOpts = {
-                    value,
-                    source,
-                    sourceIndex,
-                };
-                unescapeProp(tagOpts, "value");
-                node = new Tag(tagOpts);
+            const nodeOpts = {
+                value,
+                source,
+                sourceIndex,
+            };
+            switch (type) {
+                case types.CLASS: {
+                    return new ClassName(unescapeProp(nodeOpts, "value"));
+                }
+                case types.ID:
+                    return new ID(unescapeProp(nodeOpts, "value"));
+                default:
+                    return new Tag(unescapeProp(nodeOpts, "value"));
             }
-            this.newNode(node, namespace);
+        }
+
+        let currentNode;
+
+        iterateOverTokens(wordTokens, ({ token, char, i, previousChar, nextChar }) => {
+            const isClassPrefix = char === "." && previousChar !== "\\";
+            const isTagPrefix = char === "#" && previousChar !== "\\" && nextChar !== "{";
+
+            if (isClassPrefix || isTagPrefix) {
+                if (currentNode) {
+                    this.newNode(toNode(currentNode), namespace);
+                    currentNode = undefined;
+                    // Ensure that the namespace is used only once
+                    namespace = null;
+                }
+                currentNode = { type: types.CLASS, value: "", startToken: token, endToken: token, startIndex: i, endIndex: i };
+            } else {
+                if (!currentNode) {
+                    currentNode = { type: types.TAG, value: "", startToken: token, endToken: token, startIndex: i, endIndex: i };
+                }
+                currentNode.value += char;
+                currentNode.endToken = token;
+                currentNode.endIndex = i;
+            }
+        });
+        if (currentNode) {
+            this.newNode(toNode(currentNode), namespace);
             // Ensure that the namespace is used only once
             namespace = null;
-        });
-        this.position ++;
+        }
+
+        // function addNode(n) {
+        //     switch (n.type) {
+        //         case types.CLASS:
+        //             this.newNode(n, namespace);
+        //         case types.ID:
+        //             this.newNode(n, namespace);
+        //     }
+        // }
+
+        // let currentNode;
+
+        // for (let i = 0; i < word.length; i++) {
+        //     if (word[i] === ".") {
+        //         if (!currentNode) {
+        //             currentNode = {type: types.CLASS, value: "", startToken: "", endToken: ""};
+        //         } else {
+        //             addNode(currentNode);
+        //             currentNode = undefined;
+        //         }
+        //     }
+        // }
+
+        // for (const t of wordTokens) {
+        //     const w = tokenToString(t);
+        //     const hasClass = indexesOf(w, '.').filter(i => word[i - 1] !== '\\');
+        //     const hasId = indexesOf(w, '#').filter(i => word[i - 1] !== '\\' && word[i + 1] !== '{');
+
+        //     for (let i = 0; i < tokenToString(t).length; i++) {
+
+        //     }
+        // }
+
+        // const hasClass = indexesOf(word, '.').filter(i => word[i - 1] !== '\\');
+        // // Eliminate Sass interpolations from the list of id indexes
+        // const hasId = indexesOf(word, '#').filter(i => word[i - 1] !== '\\' && word[i + 1] !== '{');
+
+        // const indices = sortAsc(uniqs([0, ...hasClass, ...hasId]));
+        // indices.forEach((ind, i) => {
+        //     const index = indices[i + 1] || word.length;
+        //     const value = word.slice(ind, index);
+        //     if (i === 0 && firstCallback) {
+        //         return firstCallback.call(this, value, indices.length);
+        //     }
+        //     let node;
+        //     const current = this.currToken;
+        //     const sourceIndex = current[TOKEN.START_POS] + indices[i];
+        //     const source = getSource(
+        //         current[TOKEN.START_LINE],
+        //         current[TOKEN.START_COL] + ind,
+        //         current[TOKEN.END_LINE],
+        //         current[TOKEN.START_COL] + (index - 1)
+        //     );
+        //     if (~hasClass.indexOf(ind)) {
+        //         let classNameOpts = {
+        //             value: value.slice(1),
+        //             source,
+        //             sourceIndex,
+        //         };
+        //         node = new ClassName(unescapeProp(classNameOpts, "value"));
+        //     } else if (~hasId.indexOf(ind)) {
+        //         let idOpts = {
+        //             value: value.slice(1),
+        //             source,
+        //             sourceIndex,
+        //         };
+        //         node = new ID(unescapeProp(idOpts, "value"));
+        //     } else {
+        //         let tagOpts = {
+        //             value,
+        //             source,
+        //             sourceIndex,
+        //         };
+        //         unescapeProp(tagOpts, "value");
+        //         node = new Tag(tagOpts);
+        //     }
+        //     this.newNode(node, namespace);
+        //     // Ensure that the namespace is used only once
+        //     namespace = null;
+        // });
+        this.position++;
     }
 
-    word (namespace) {
+    word(namespace) {
         const nextToken = this.nextToken;
         if (nextToken && this.content(nextToken) === '|') {
-            this.position ++;
+            this.position++;
             return this.namespace();
         }
         return this.splitWord(namespace);
     }
 
-    loop () {
+    loop() {
         while (this.position < this.tokens.length) {
             this.parse(true);
         }
@@ -907,57 +1008,57 @@ export default class Parser {
         return this.root;
     }
 
-    parse (throwOnParenthesis) {
+    parse(throwOnParenthesis) {
         switch (this.currToken[TOKEN.TYPE]) {
-        case tokens.space:
-            this.space();
-            break;
-        case tokens.comment:
-            this.comment();
-            break;
-        case tokens.openParenthesis:
-            this.parentheses();
-            break;
-        case tokens.closeParenthesis:
-            if (throwOnParenthesis) {
-                this.missingParenthesis();
-            }
-            break;
-        case tokens.openSquare:
-            this.attribute();
-            break;
-        case tokens.dollar:
-        case tokens.caret:
-        case tokens.equals:
-        case tokens.word:
-            this.word();
-            break;
-        case tokens.colon:
-            this.pseudo();
-            break;
-        case tokens.comma:
-            this.comma();
-            break;
-        case tokens.asterisk:
-            this.universal();
-            break;
-        case tokens.ampersand:
-            this.nesting();
-            break;
-        case tokens.slash:
-        case tokens.combinator:
-            this.combinator();
-            break;
-        case tokens.str:
-            this.string();
-            break;
-        // These cases throw; no break needed.
-        case tokens.closeSquare:
-            this.missingSquareBracket();
-        case tokens.semicolon:
-            this.missingBackslash();
-        default:
-            this.unexpected();
+            case tokens.space:
+                this.space();
+                break;
+            case tokens.comment:
+                this.comment();
+                break;
+            case tokens.openParenthesis:
+                this.parentheses();
+                break;
+            case tokens.closeParenthesis:
+                if (throwOnParenthesis) {
+                    this.missingParenthesis();
+                }
+                break;
+            case tokens.openSquare:
+                this.attribute();
+                break;
+            case tokens.dollar:
+            case tokens.caret:
+            case tokens.equals:
+            case tokens.word:
+                this.word();
+                break;
+            case tokens.colon:
+                this.pseudo();
+                break;
+            case tokens.comma:
+                this.comma();
+                break;
+            case tokens.asterisk:
+                this.universal();
+                break;
+            case tokens.ampersand:
+                this.nesting();
+                break;
+            case tokens.slash:
+            case tokens.combinator:
+                this.combinator();
+                break;
+            case tokens.str:
+                this.string();
+                break;
+            // These cases throw; no break needed.
+            case tokens.closeSquare:
+                this.missingSquareBracket();
+            case tokens.semicolon:
+                this.missingBackslash();
+            default:
+                this.unexpected();
         }
     }
 
@@ -965,7 +1066,7 @@ export default class Parser {
      * Helpers
      */
 
-    expected (description, index, found) {
+    expected(description, index, found) {
         if (Array.isArray(description)) {
             const last = description.pop();
             description = `${description.join(', ')} or ${last}`;
@@ -974,24 +1075,24 @@ export default class Parser {
         if (!found) {
             return this.error(
                 `Expected ${an} ${description}.`,
-                {index}
+                { index }
             );
         }
         return this.error(
             `Expected ${an} ${description}, found "${found}" instead.`,
-            {index}
+            { index }
         );
     }
 
-    requiredSpace (space) {
+    requiredSpace(space) {
         return this.options.lossy ? ' ' : space;
     }
 
-    optionalSpace (space) {
+    optionalSpace(space) {
         return this.options.lossy ? '' : space;
     }
 
-    lossySpace (space, required) {
+    lossySpace(space, required) {
         if (this.options.lossy) {
             return required ? ' ' : '';
         } else {
@@ -999,7 +1100,7 @@ export default class Parser {
         }
     }
 
-    parseParenthesisToken (token) {
+    parseParenthesisToken(token) {
         const content = this.content(token);
         if (token[TOKEN.TYPE] === tokens.space) {
             return this.requiredSpace(content);
@@ -1008,7 +1109,7 @@ export default class Parser {
         }
     }
 
-    newNode (node, namespace) {
+    newNode(node, namespace) {
         if (namespace) {
             if (/^ +$/.test(namespace)) {
                 if (!this.options.lossy) {
@@ -1026,19 +1127,19 @@ export default class Parser {
         return this.current.append(node);
     }
 
-    content (token = this.currToken) {
+    content(token = this.currToken) {
         return this.css.slice(token[TOKEN.START_POS], token[TOKEN.END_POS]);
     }
 
-    get currToken () {
+    get currToken() {
         return this.tokens[this.position];
     }
 
-    get nextToken () {
+    get nextToken() {
         return this.tokens[this.position + 1];
     }
 
-    get prevToken () {
+    get prevToken() {
         return this.tokens[this.position - 1];
     }
 
@@ -1046,7 +1147,7 @@ export default class Parser {
      * returns the index of the next non-whitespace, non-comment token.
      * returns -1 if no meaningful token is found.
      */
-    locateNextMeaningfulToken (startPosition = this.position + 1) {
+    locateNextMeaningfulToken(startPosition = this.position + 1) {
         let searchPosition = startPosition;
         while (searchPosition < this.tokens.length) {
             if (WHITESPACE_EQUIV_TOKENS[this.tokens[searchPosition][TOKEN.TYPE]]) {
