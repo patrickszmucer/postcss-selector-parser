@@ -95,6 +95,23 @@ function unescapeProp (node, prop) {
     return node;
 }
 
+function indexesOf (array, item) {
+    let i = -1;
+    const indexes = [];
+
+    while ((i = array.indexOf(item, i + 1)) !== -1) {
+        indexes.push(i);
+    }
+
+    return indexes;
+}
+
+function uniqs () {
+    const list = Array.prototype.concat.apply([], arguments);
+
+    return list.filter((item, i) => i === list.indexOf(item));
+}
+
 export default class Parser {
     constructor (rule, options = {}) {
         this.rule = rule;
@@ -133,13 +150,13 @@ export default class Parser {
     attribute () {
         const attr = [];
         const startingToken = this.currToken;
-        this.position++;
+        this.position ++;
         while (
             this.position < this.tokens.length &&
             this.currToken[TOKEN.TYPE] !== tokens.closeSquare
         ) {
             attr.push(this.currToken);
-            this.position++;
+            this.position ++;
         }
         if (this.currToken[TOKEN.TYPE] !== tokens.closeSquare) {
             return this.expected('closing square bracket', this.currToken[TOKEN.START_POS]);
@@ -259,10 +276,10 @@ export default class Parser {
             case tokens.word:
                 if (
                     next &&
-                        this.content(next) === '|' &&
-                        (attr[pos + 2] && attr[pos + 2][TOKEN.TYPE] !== tokens.equals) && // this look-ahead probably fails with comment nodes involved.
-                        !node.operator &&
-                        !node.namespace
+                    this.content(next) === '|' &&
+                    (attr[pos + 2] && attr[pos + 2][TOKEN.TYPE] !== tokens.equals) && // this look-ahead probably fails with comment nodes involved.
+                    !node.operator &&
+                    !node.namespace
                 ) {
                     node.namespace = content;
                     lastAdded = 'namespace';
@@ -355,7 +372,7 @@ export default class Parser {
             case tokens.comment:
                 if (lastAdded) {
                     if (spaceAfterMeaningfulToken || (next && next[TOKEN.TYPE] === tokens.space) ||
-                            lastAdded === 'insensitive'
+                        lastAdded === 'insensitive'
                     ) {
                         const lastComment = getProp(node, 'spaces', lastAdded, 'after') || '';
                         const rawLastComment = getProp(node, 'raws', 'spaces', lastAdded, 'after') || lastComment;
@@ -375,12 +392,12 @@ export default class Parser {
             default:
                 return this.error(`Unexpected "${content}" found.`, {index: token[TOKEN.START_POS]});
             }
-            pos++;
+            pos ++;
         }
         unescapeProp(node, "attribute");
         unescapeProp(node, "namespace");
         this.newNode(new Attribute(node));
-        this.position++;
+        this.position ++;
     }
 
     /**
@@ -468,8 +485,8 @@ export default class Parser {
 
     isNamedCombinator (position = this.position) {
         return this.tokens[position + 0] && this.tokens[position + 0][TOKEN.TYPE] === tokens.slash &&
-            this.tokens[position + 1] && this.tokens[position + 1][TOKEN.TYPE] === tokens.word &&
-            this.tokens[position + 2] && this.tokens[position + 2][TOKEN.TYPE] === tokens.slash;
+               this.tokens[position + 1] && this.tokens[position + 1][TOKEN.TYPE] === tokens.word &&
+               this.tokens[position + 2] && this.tokens[position + 2][TOKEN.TYPE] === tokens.slash;
 
     }
     namedCombinator () {
@@ -587,14 +604,14 @@ export default class Parser {
     comma () {
         if (this.position === this.tokens.length - 1) {
             this.root.trailingComma = true;
-            this.position++;
+            this.position ++;
             return;
         }
         this.current._inferEndPosition();
         const selector = new Selector({source: {start: tokenStart(this.tokens[this.position + 1])}});
         this.current.parent.append(selector);
         this.current = selector;
-        this.position++;
+        this.position ++;
     }
 
     comment () {
@@ -604,7 +621,7 @@ export default class Parser {
             source: getTokenSource(current),
             sourceIndex: current[TOKEN.START_POS],
         }));
-        this.position++;
+        this.position ++;
     }
 
     error (message, opts) {
@@ -632,10 +649,10 @@ export default class Parser {
     namespace () {
         const before = this.prevToken && this.content(this.prevToken) || true;
         if (this.nextToken[TOKEN.TYPE] === tokens.word) {
-            this.position++;
+            this.position ++;
             return this.word(before);
         } else if (this.nextToken[TOKEN.TYPE] === tokens.asterisk) {
-            this.position++;
+            this.position ++;
             return this.universal(before);
         }
     }
@@ -654,13 +671,13 @@ export default class Parser {
             source: getTokenSource(current),
             sourceIndex: current[TOKEN.START_POS],
         }));
-        this.position++;
+        this.position ++;
     }
 
     parentheses () {
         let last = this.current.last;
         let unbalanced = 1;
-        this.position++;
+        this.position ++;
         if (last && last.type === types.PSEUDO) {
             const selector = new Selector({source: {start: tokenStart(this.tokens[this.position - 1])}});
             const cache = this.current;
@@ -668,17 +685,17 @@ export default class Parser {
             this.current = selector;
             while (this.position < this.tokens.length && unbalanced) {
                 if (this.currToken[TOKEN.TYPE] === tokens.openParenthesis) {
-                    unbalanced++;
+                    unbalanced ++;
                 }
                 if (this.currToken[TOKEN.TYPE] === tokens.closeParenthesis) {
-                    unbalanced--;
+                    unbalanced --;
                 }
                 if (unbalanced) {
                     this.parse();
                 } else {
                     this.current.source.end = tokenEnd(this.currToken);
                     this.current.parent.source.end = tokenEnd(this.currToken);
-                    this.position++;
+                    this.position ++;
                 }
             }
             this.current = cache;
@@ -690,14 +707,14 @@ export default class Parser {
             let parenEnd;
             while (this.position < this.tokens.length && unbalanced) {
                 if (this.currToken[TOKEN.TYPE] === tokens.openParenthesis) {
-                    unbalanced++;
+                    unbalanced ++;
                 }
                 if (this.currToken[TOKEN.TYPE] === tokens.closeParenthesis) {
-                    unbalanced--;
+                    unbalanced --;
                 }
                 parenEnd = this.currToken;
                 parenValue += this.parseParenthesisToken(this.currToken);
-                this.position++;
+                this.position ++;
             }
             if (last) {
                 last.appendToPropertyAndEscape("value", parenValue, parenValue);
@@ -724,7 +741,7 @@ export default class Parser {
         let startingToken = this.currToken;
         while (this.currToken && this.currToken[TOKEN.TYPE] === tokens.colon) {
             pseudoStr += this.content();
-            this.position++;
+            this.position ++;
         }
         if (!this.currToken) {
             return this.expected(['pseudo-class', 'pseudo-element'], this.position - 1);
@@ -762,14 +779,14 @@ export default class Parser {
             (this.current.nodes.every((node) => node.type === 'comment'))
         ) {
             this.spaces = this.optionalSpace(content);
-            this.position++;
+            this.position ++;
         } else if (
             this.position === (this.tokens.length - 1) ||
             this.nextToken[TOKEN.TYPE] === tokens.comma ||
             this.nextToken[TOKEN.TYPE] === tokens.closeParenthesis
         ) {
             this.current.last.spaces.after = this.optionalSpace(content);
-            this.position++;
+            this.position ++;
         } else {
             this.combinator();
         }
@@ -782,13 +799,13 @@ export default class Parser {
             source: getTokenSource(current),
             sourceIndex: current[TOKEN.START_POS],
         }));
-        this.position++;
+        this.position ++;
     }
 
     universal (namespace) {
         const nextToken = this.nextToken;
         if (nextToken && this.content(nextToken) === '|') {
-            this.position++;
+            this.position ++;
             return this.namespace();
         }
         const current = this.currToken;
@@ -797,7 +814,7 @@ export default class Parser {
             source: getTokenSource(current),
             sourceIndex: current[TOKEN.START_POS],
         }), namespace);
-        this.position++;
+        this.position ++;
     }
 
     splitWord (namespace, firstCallback) {
@@ -808,14 +825,14 @@ export default class Parser {
             nextToken &&
             ~[tokens.dollar, tokens.caret, tokens.equals, tokens.word].indexOf(nextToken[TOKEN.TYPE])
         ) {
-            this.position++;
+            this.position ++;
             const token = this.currToken;
             wordTokens.push(token);
             if (this.content(token).endsWith('\\')) {
                 let next = this.nextToken;
                 if (next && next[TOKEN.TYPE] === tokens.space) {
                     wordTokens.push(next);
-                    this.position++;
+                    this.position ++;
                 }
             }
             nextToken = this.nextToken;
@@ -892,13 +909,13 @@ export default class Parser {
             }
         });
 
-        this.position++;
+        this.position ++;
     }
 
     word (namespace) {
         const nextToken = this.nextToken;
         if (nextToken && this.content(nextToken) === '|') {
-            this.position++;
+            this.position ++;
             return this.namespace();
         }
         return this.splitWord(namespace);
@@ -956,7 +973,7 @@ export default class Parser {
         case tokens.str:
             this.string();
             break;
-            // These cases throw; no break needed.
+        // These cases throw; no break needed.
         case tokens.closeSquare:
             this.missingSquareBracket();
         case tokens.semicolon:
