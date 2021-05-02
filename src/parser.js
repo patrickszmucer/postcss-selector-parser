@@ -11,7 +11,6 @@ import Universal from './selectors/universal';
 import Combinator from './selectors/combinator';
 import Nesting from './selectors/nesting';
 
-import sortAsc from './sortAscending';
 import tokenize, {FIELDS as TOKEN} from './tokenize';
 
 import * as tokens from './tokenTypes';
@@ -93,23 +92,6 @@ function unescapeProp (node, prop) {
         }
     }
     return node;
-}
-
-function indexesOf (array, item) {
-    let i = -1;
-    const indexes = [];
-
-    while ((i = array.indexOf(item, i + 1)) !== -1) {
-        indexes.push(i);
-    }
-
-    return indexes;
-}
-
-function uniqs () {
-    const list = Array.prototype.concat.apply([], arguments);
-
-    return list.filter((item, i) => i === list.indexOf(item));
 }
 
 export default class Parser {
